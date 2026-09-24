@@ -1,0 +1,29 @@
+[project]
+name = "agent-framework-agent-azure-search-rag-responses"
+version = "0.1.0"
+description = "A Microsoft Foundry hosted agent built with Microsoft Agent Framework."
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry",
+    "agent-framework-azure-ai-search",
+    "agent-framework-foundry-hosting>=1.0.0b260813",
+    "azure-identity>=1.25.0",
+    "azure-search-documents>=12.0.0",
+    "debugpy",
+    "fonttools>=4.60.0",
+    "httpx>=0.28.0",
+    "openpyxl>=3.1.5",
+    "pypdf>=6.0.0",
+    "python-docx>=1.2.0",
+    "python-dotenv>=1.2.0",
+    "python-pptx>=1.0.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+    "pytest-asyncio>=1.1.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

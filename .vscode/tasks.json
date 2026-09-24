@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Validate prerequisites",
+      "type": "aitk",
+      "command": "debug-check-prerequisites",
+      "args": {
+        "portOccupancy": [5679, 8088]
+      }
+    },
+    {
+      "label": "Run Agent/Workflow HTTP Server",
+      "type": "shell",
+      "command": ".venv/bin/python -m debugpy --listen 127.0.0.1:5679 main.py",
+      "isBackground": true,
+      "options": {
+        "cwd": "${workspaceFolder}/src/agent-framework-agent-azure-search-rag-responses",
+        "env": {
+          "AZURE_AUTH_MODE": "cli"
+        }
+      },
+      "dependsOn": ["Validate prerequisites"],
+      "problemMatcher": {
+        "pattern": [{ "regexp": "^.*$", "file": 0, "location": 1, "message": 2 }],
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": "Application startup complete|[Rr]unning on|Started server process"
+        }
+      }
+    },
+    {
+      "label": "Open Agent Inspector",
+      "type": "shell",
+      "command": "echo '${input:openAgentInspector}'",
+      "presentation": { "reveal": "never" },
+      "dependsOn": ["Run Agent/Workflow HTTP Server"]
+    },
+    {
+      "label": "Sync SharePoint to Azure AI Search",
+      "type": "shell",
+      "command": ".venv/bin/python sync_sharepoint.py",
+      "options": {
+        "cwd": "${workspaceFolder}/src/agent-framework-agent-azure-search-rag-responses"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Terminate All Tasks",
+      "command": "echo ${input:terminate}",
+      "type": "shell",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "openAgentInspector",
+      "type": "command",
+      "command": "ai-mlstudio.openTestTool",
+      "args": { "triggeredFrom": "tasks", "port": 8088 }
+    },
+    {
+      "id": "terminate",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "terminateAll"
+    }
+  ]
+}
