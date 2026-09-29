@@ -417,15 +417,44 @@ allowedPrincipals/any(principal: search.in(principal, '<trusted-principals>', ',
 
 A query must never execute without a trusted principal list.
 
-## Phase 7: Implement Production Caller Identity Mapping
+## Phase 7: Implement Test-Tenant Caller Identity Mapping
 
-This phase is not complete and blocks production Teams/Copilot publication.
+This phase is not complete. The immediate target is an end-to-end deployment to the existing test tenant for both Microsoft Teams and Microsoft 365 Copilot. Production resources and production publication are explicitly deferred.
+
+The detailed implementation runbook is in `PLAN_PHASE_7_TEST_TENANT_IDENTITY.md`.
+
+### Phase 7 decisions
+
+| Decision | Selected approach |
+| --- | --- |
+| Channels | Both Microsoft Teams and Microsoft 365 Copilot |
+| Identity flow | Channel SSO, validated Entra token, optional on-behalf-of exchange, server-side principal resolution, ACL-filtered Search |
+| Tenant | Existing test tenant only; no production tenant or resources |
+| Administration | Tenant administrator access is available for test setup and consent |
+| App registration | Human creates the registration using the Phase 7 runbook; AI generates and implements the dependent configuration |
+| Graph consent | Human can approve the least-privilege delegated permissions selected during implementation |
+| SharePoint-only groups | Resolve membership on every request; no membership cache for authorization decisions |
+| Mapping/cache service | Azure Cache for Redis for short-lived identity correlation and non-authoritative operational caching |
+| Resource strategy | Reuse current test resources where practical; do not create production resources |
+| Guests and cross-tenant users | Not supported; reject them fail-closed |
+| SharePoint scope | Only the currently configured SharePoint site |
+| Default access-control model | Prefer Entra groups; retain SharePoint-only group resolution for existing ACLs |
+| Development fallback | Remove or disable it for Teams/Copilot channel validation, even in the test tenant |
 
 ### 7.1 Choose the channel identity flow
 
 **Owner:** Human architect with Teams/Copilot administrator
 
-For Teams or Microsoft 365 Copilot, configure SSO/OAuth so a trusted server component receives a validated Entra user token. Determine:
+Configure both Teams and Microsoft 365 Copilot to use SSO/OAuth so a trusted server component receives a validated Entra user token. The recommended flow is accepted:
+
+1. The channel authenticates the user.
+2. The trusted backend validates the user token.
+3. The backend reads `tid` and `oid` and performs on-behalf-of exchange when required.
+4. Microsoft Graph resolves transitive Entra groups.
+5. The resolver checks relevant SharePoint-only group membership for the configured site.
+6. The agent applies only server-derived principals to the Azure AI Search ACL filter.
+
+Implementation must determine and document:
 
 - Token audience.
 - Required delegated Graph permissions.
@@ -449,13 +478,13 @@ Validate at minimum:
 - User object claim `oid` exists.
 - Authorized client application claim where applicable.
 
-Reject invalid, guest/cross-tenant, or ambiguous identities unless explicitly supported.
+Reject invalid, guest, cross-tenant, or ambiguous identities. Only the configured test tenant is supported in this phase.
 
 ### 7.3 Resolve Entra groups
 
 **Owner:** Identity service
 
-Resolve the caller's transitive Entra group memberships through Microsoft Graph. Use server-side Graph authorization and pagination. Cache results briefly with a clear maximum age.
+Resolve the caller's transitive Entra group memberships through Microsoft Graph with server-side authorization and pagination. Entra groups are the preferred access-control mechanism for this test deployment.
 
 The trusted principal list starts with:
 
@@ -465,7 +494,7 @@ The trusted principal list starts with:
 tenant:<your-tenant-id>
 ```
 
-Include the tenant principal only when organization-wide sharing should authorize the caller.
+Do not add the tenant principal during this phase unless a specific organization-wide sharing test is approved.
 
 ### 7.4 Resolve SharePoint-only groups
 
@@ -473,19 +502,15 @@ Include the tenant principal only when organization-wide sharing should authoriz
 
 The ingestion index may contain `siteGroup:<id>`. Build a resolver that determines which relevant SharePoint site groups contain the caller, including nested Entra-backed membership where applicable.
 
-Options:
+Resolve SharePoint-only group membership dynamically on every request for the currently configured site. Do not use cached SharePoint membership as an authorization decision during this phase.
 
-1. Resolve site-group membership dynamically for the selected site.
-2. Maintain a synchronized server-side membership cache.
-3. Replace SharePoint-only group ACLs at ingestion time with expanded Entra principals when expansion is reliable and within Search field limits.
-
-**Recommendation:** Use a server-side cache keyed by site ID and caller `oid`, refreshed on a short interval and invalidated after authorization failures.
+Prefer Entra groups for new access-control assignments. Existing `siteGroup:<id>` ACLs remain supported and are resolved per request.
 
 ### 7.5 Bind Foundry user IDs to principals
 
 **Owner:** AI agent implements; security owner reviews
 
-Development currently supports static `FOUNDRY_USER_PRINCIPAL_MAP_JSON`. Production should replace static JSON with a trusted resolver or durable mapping store.
+Development currently supports static `FOUNDRY_USER_PRINCIPAL_MAP_JSON`. The Teams/Copilot test flow must replace static JSON authorization with a trusted resolver. Azure Cache for Redis is selected for short-lived channel-to-Entra correlation and operational caching, but authoritative user and group membership must come from validated tokens and live directory/site resolution.
 
 Required mapping shape:
 
@@ -500,12 +525,13 @@ Required mapping shape:
 }
 ```
 
-Production rules:
+Test-tenant rules that also form the production baseline:
 
 - Populate this mapping only from validated tokens and server-side Graph calls.
 - Never accept principal arrays directly from a client header or prompt.
 - Partition cache entries by tenant and site.
-- Define TTL and revocation behavior.
+- Use a five-minute maximum TTL for non-authorization correlation data.
+- Do not cache SharePoint-only membership decisions.
 - Remove stale mappings when users or group memberships change.
 - Audit mapping updates without logging access tokens.
 
@@ -513,7 +539,7 @@ Production rules:
 
 **Owner:** AI agent
 
-Replace or extend `_resolve_principal_ids()` in `secure_search.py` so it calls the trusted production resolver rather than static JSON.
+Replace or extend `_resolve_principal_ids()` in `secure_search.py` so the Teams/Copilot path calls the trusted test-tenant resolver rather than static JSON. Preserve a clearly isolated static adapter only for local development tests.
 
 Required behavior:
 
@@ -890,19 +916,22 @@ Delete the Entra application, service principal, and remaining credentials only 
 - [x] Search query-time ACL filtering implemented.
 - [x] Fail-closed no-result behavior implemented.
 - [x] Local authorized and unauthorized tests pass.
-- [ ] Teams/Copilot SSO flow selected.
+- [x] Teams/Copilot channels and recommended SSO flow selected for the test tenant.
+- [x] Test-tenant security policy and identity architecture selected.
+- [ ] Test channel app registration created and configured.
 - [ ] Entra token validation implemented.
 - [ ] Transitive Entra group resolution implemented.
-- [ ] SharePoint site-group resolution implemented.
-- [ ] Durable/cache mapping from Foundry user ID to trusted principals implemented.
+- [ ] Per-request SharePoint site-group resolution implemented.
+- [ ] Azure Cache for Redis correlation store implemented with a five-minute maximum TTL.
 - [ ] Cross-user conversation isolation verified in the target channel.
-- [ ] Static `FOUNDRY_USER_PRINCIPAL_MAP_JSON` removed from production flow.
+- [ ] Static `FOUNDRY_USER_PRINCIPAL_MAP_JSON` removed from Teams/Copilot flow.
 
 ### Deployment
 
-- [ ] Current production model selected and evaluated.
-- [ ] Hosted agent identity created.
-- [ ] Hosted agent granted `Search Index Data Reader` only.
-- [ ] Hosted environment excludes all development identity overrides.
-- [ ] Agent deployed and remotely smoke-tested.
-- [ ] Teams/Copilot publication completed only after identity-mapping validation.
+- [x] Test hosted agent identity created.
+- [x] Test hosted agent granted `Search Index Data Reader` only.
+- [x] Test agent deployed and remotely smoke-tested.
+- [ ] Development identity overrides disabled for Teams/Copilot tests.
+- [ ] Limited Teams test deployment completed after identity validation.
+- [ ] Limited Microsoft 365 Copilot test deployment completed after identity validation.
+- [ ] Production model and resources selected later; deferred for this phase.
