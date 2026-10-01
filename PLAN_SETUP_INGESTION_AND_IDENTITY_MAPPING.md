@@ -428,13 +428,13 @@ The detailed implementation runbook is in `PLAN_PHASE_7_TEST_TENANT_IDENTITY.md`
 | Decision | Selected approach |
 | --- | --- |
 | Channels | Both Microsoft Teams and Microsoft 365 Copilot |
-| Identity flow | Channel SSO, validated Entra token, optional on-behalf-of exchange, server-side principal resolution, ACL-filtered Search |
+| Identity flow | Activity protocol: Teams supplies the caller's Entra object ID and tenant over the authenticated Bot Service channel; the agent resolves groups server-side and applies the ACL filter (verified with agent version 15) |
 | Tenant | Existing test tenant only; no production tenant or resources |
 | Administration | Tenant administrator access is available for test setup and consent |
-| App registration | Human creates the registration using the Phase 7 runbook; AI generates and implements the dependent configuration |
+| App registration | Not needed on the Activity path; the Azure Bot uses the agent instance identity |
 | Graph consent | Human can approve the least-privilege delegated permissions selected during implementation |
 | SharePoint-only groups | Resolve membership on every request; no membership cache for authorization decisions |
-| Mapping/cache service | Azure Cache for Redis for short-lived identity correlation and non-authoritative operational caching |
+| Mapping/cache service | Azure Cache for Redis only if a later need appears; identity correlation is not required |
 | Resource strategy | Reuse current test resources where practical; do not create production resources |
 | Guests and cross-tenant users | Not supported; reject them fail-closed |
 | SharePoint scope | Only the currently configured SharePoint site |

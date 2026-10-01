@@ -2,6 +2,7 @@ import json
 import logging
 import os
 from collections.abc import Sequence
+from contextvars import ContextVar, Token
 from typing import Any
 
 from agent_framework import Message
@@ -10,6 +11,17 @@ from azure.ai.agentserver.core import get_request_context
 
 
 logger = logging.getLogger(__name__)
+
+# Principals resolved server-side for a channel-authenticated caller (Teams); never set from client input.
+_trusted_principals: ContextVar[list[str] | None] = ContextVar("trusted_principals", default=None)
+
+
+def set_trusted_principals(principals: list[str]) -> Token[list[str] | None]:
+    return _trusted_principals.set(principals)
+
+
+def reset_trusted_principals(token: Token[list[str] | None]) -> None:
+    _trusted_principals.reset(token)
 
 
 class SharePointPermissionError(RuntimeError):
@@ -58,10 +70,18 @@ class SharePointSearchContextProvider(AzureAISearchContextProvider):
         return f"[Source: {citation}] {text}"
 
     def _resolve_principal_ids(self) -> list[str]:
+        trusted_principals = _trusted_principals.get()
+        if trusted_principals is not None:
+            return self._normalize(trusted_principals)
+
         request_user_id = get_request_context().user_id
         if request_user_id:
             raw_mapping = os.getenv("FOUNDRY_USER_PRINCIPAL_MAP_JSON", "{}")
-            mapping = json.loads(raw_mapping)
+            try:
+                mapping = json.loads(raw_mapping)
+            except json.JSONDecodeError:
+                logger.warning("Ignoring malformed FOUNDRY_USER_PRINCIPAL_MAP_JSON value.")
+                mapping = {}
             principals = mapping.get(request_user_id, [])
             logger.info(
                 "SharePoint identity mapping lookup: user_id=%r mapped=%s",
@@ -74,6 +94,10 @@ class SharePointSearchContextProvider(AzureAISearchContextProvider):
         if not principals and os.getenv("ALLOW_LOCAL_DEVELOPMENT_IDENTITY", "").lower() == "true":
             principals = os.getenv("LOCAL_DEVELOPMENT_PRINCIPAL_IDS", "").split(",")
 
+        return self._normalize(principals)
+
+    @staticmethod
+    def _normalize(principals: Sequence[Any]) -> list[str]:
         normalized = [str(principal).strip() for principal in principals if str(principal).strip()]
         if not normalized:
             raise SharePointPermissionError(

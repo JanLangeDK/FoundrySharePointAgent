@@ -16,11 +16,16 @@ dependencies = [
     { name = "agent-framework-azure-ai-search" },
     { name = "agent-framework-foundry" },
     { name = "agent-framework-foundry-hosting" },
+    { name = "aiohttp" },
+    { name = "azure-ai-agentserver-activity" },
     { name = "azure-identity" },
     { name = "azure-search-documents" },
     { name = "debugpy" },
     { name = "fonttools" },
     { name = "httpx" },
+    { name = "microsoft-agents-activity" },
+    { name = "microsoft-agents-authentication-msal" },
+    { name = "microsoft-agents-hosting-core" },
     { name = "openpyxl" },
     { name = "pypdf" },
     { name = "python-docx" },
@@ -39,11 +44,16 @@ requires-dist = [
     { name = "agent-framework-azure-ai-search" },
     { name = "agent-framework-foundry" },
     { name = "agent-framework-foundry-hosting", specifier = ">=1.0.0b260813" },
+    { name = "aiohttp", specifier = ">=3.9.0" },
+    { name = "azure-ai-agentserver-activity", specifier = ">=1.0.0b1" },
     { name = "azure-identity", specifier = ">=1.25.0" },
     { name = "azure-search-documents", specifier = ">=12.0.0" },
     { name = "debugpy" },
     { name = "fonttools", specifier = ">=4.60.0" },
     { name = "httpx", specifier = ">=0.28.0" },
+    { name = "microsoft-agents-activity", specifier = ">=1.7.0" },
+    { name = "microsoft-agents-authentication-msal", specifier = ">=1.7.0" },
+    { name = "microsoft-agents-hosting-core", specifier = ">=1.7.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pypdf", specifier = ">=6.0.0" },
     { name = "python-docx", specifier = ">=1.2.0" },
@@ -273,6 +283,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9a/8e/82a0fe20a541c03148528be8cac2408564a6c9a0cc7e9171802bc1d26985/attrs-26.1.0.tar.gz", hash = "sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32", size = 952055, upload-time = "2026-03-19T14:22:25.026Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl", hash = "sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309", size = 67548, upload-time = "2026-03-19T14:22:23.645Z" },
+]
+
+[[package]]
+name = "azure-ai-agentserver-activity"
+version = "1.0.0b3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "azure-ai-agentserver-core" },
+    { name = "microsoft-agents-activity" },
+    { name = "microsoft-agents-authentication-msal" },
+    { name = "microsoft-agents-hosting-core" },
+    { name = "opentelemetry-api" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9b/5e/ff2ffd44b8c7f0cb512e49cce5b2c22777e662cd609f93690c65ba5e9735/azure_ai_agentserver_activity-1.0.0b3.tar.gz", hash = "sha256:0a7e0cc853ffd7d6a2caad7747dbe22223cd41c31d10b152560110373d3b7e4d", size = 55944, upload-time = "2026-08-21T16:19:27.516Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/0c/07448fb0af4e293a9149750e6848988122bb6acef3af1f832dc520a387a9/azure_ai_agentserver_activity-1.0.0b3-py3-none-any.whl", hash = "sha256:e0f1cde51f6710a10ad78301350eb82aa013b8d88bfe9bef99b608d25746411a", size = 31899, upload-time = "2026-08-21T16:19:28.578Z" },
 ]
 
 [[package]]
@@ -1217,6 +1244,53 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ba/93/0142dc84a666daf8ad51a34268f34c12fd6fda4f3810c4be2504eecc8212/mcp-1.30.0.tar.gz", hash = "sha256:445414625fce5c295faa505bb11bacece661ab6f4028d57c935db57820b7a3e4", size = 680511, upload-time = "2026-09-07T14:34:15.845Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/f4/e58bc33317c92a0203664daaf00bf6f41166cc0149e5d6870a03f7cd004a/mcp-1.30.0-py3-none-any.whl", hash = "sha256:666edb5009503e1047c9d60346a756f94b261f05cc2625f23d41c728ffc484d0", size = 234581, upload-time = "2026-09-07T14:34:14.266Z" },
+]
+
+[[package]]
+name = "microsoft-agents-activity"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/b7/5b9405a9d578d37d0ea8d564e076acf1e9c130f9d49ff2422f517d68eac3/microsoft_agents_activity-1.7.0.tar.gz", hash = "sha256:bb09bb14257ba8782decd7fb41447b96a6afb76ac138597972fab3bc61ba7ace", size = 74266, upload-time = "2026-09-17T22:09:44.479Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e1/16/666feb7f4d1a6eca4471ddf55e030050b2048d6b84342d18b367ad10dabf/microsoft_agents_activity-1.7.0-py3-none-any.whl", hash = "sha256:57cb7ab5cb1705f9474f85b3b6e1258c54dc0ddb0985e99c07ece7a9c216b5ca", size = 150034, upload-time = "2026-09-17T22:09:58.996Z" },
+]
+
+[[package]]
+name = "microsoft-agents-authentication-msal"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "azure-core" },
+    { name = "microsoft-agents-hosting-core" },
+    { name = "msal" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/37/4f/512c28989660ec9705c86645e9e3925cd209a5d81671b869502a7c383f7e/microsoft_agents_authentication_msal-1.7.0.tar.gz", hash = "sha256:4baf5c25c33a73c9766a6ab31a1c8ff13fe8fe0bee11a4baa66241621e2eb3a8", size = 14895, upload-time = "2026-09-17T22:09:46.511Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/52/4ab00b836b76b48cca0bd55c4bf555561e6ade577f38f8b3a1a6ccdbcece/microsoft_agents_authentication_msal-1.7.0-py3-none-any.whl", hash = "sha256:9b97d311e370f07e9638a0001ce1f00699556594917f323974b4b446b6b417c9", size = 14245, upload-time = "2026-09-17T22:10:01.02Z" },
+]
+
+[[package]]
+name = "microsoft-agents-hosting-core"
+version = "1.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp" },
+    { name = "azure-core" },
+    { name = "isodate" },
+    { name = "microsoft-agents-activity" },
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-sdk" },
+    { name = "pyjwt" },
+    { name = "python-dotenv" },
+    { name = "yarl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/94/b5/43d5b955312438a4d609fe14f1d7d574fa0a8b2b9cf470d528e3f6971c30/microsoft_agents_hosting_core-1.7.0.tar.gz", hash = "sha256:543e36ce55decde76a122e34b112794904b6dff73c4b63415f8ee69c331c4fca", size = 157460, upload-time = "2026-09-17T22:09:49.628Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/25/90/1c61b3b09e8a7dbd72d721ac81ccd573c73f2744c74b28f2bec3d8ecf1b3/microsoft_agents_hosting_core-1.7.0-py3-none-any.whl", hash = "sha256:055260f8621a9a19dbcb80e587cdf034ebccffc30b2a0f1e7c9f989ad81dbdae", size = 230443, upload-time = "2026-09-17T22:10:04.241Z" },
 ]
 
 [[package]]

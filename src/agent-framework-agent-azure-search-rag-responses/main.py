@@ -7,15 +7,30 @@ import os
 from agent_framework import Agent
 from agent_framework.foundry import FoundryChatClient
 from agent_framework_foundry_hosting import ResponsesHostServer
+from azure.ai.agentserver.activity import ActivityAgentServerHost
 from azure.identity import AzureCliCredential, DefaultAzureCredential
 from dotenv import load_dotenv
 
-from secure_search import SharePointSearchContextProvider
+from secure_search import (
+    SharePointPermissionError,
+    SharePointSearchContextProvider,
+    reset_trusted_principals,
+    set_trusted_principals,
+)
+from entra_principals import EntraPrincipalResolver
 
 # Load environment variables from .env file
 load_dotenv()
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logging.getLogger("secure_search").setLevel(logging.INFO)
+
+NO_ACCESS_REPLY = "I couldn't find an answer in the SharePoint documents you have access to."
+
+
+class AgentHost(ResponsesHostServer, ActivityAgentServerHost):
+    """Serves the Responses protocol (Foundry) and the Activity protocol (Teams/Copilot)."""
 
 
 def _resolved_env(name: str) -> str:
@@ -85,10 +100,63 @@ async def main():
         # https://developers.openai.com/api/reference/resources/responses/methods/create
         default_options={"store": False},
     )
-    server = ResponsesHostServer(agent)
+    server = AgentHost(agent)
+    resolver = EntraPrincipalResolver(credential.get_token)
+    register_teams_handlers(server, agent, resolver)
     await server.run_async()
+    await resolver.close()
     if context_providers:
         await context_providers[0].close()
+
+
+def register_teams_handlers(host: AgentHost, agent: Agent, resolver: EntraPrincipalResolver) -> None:
+    app = host.agent_app
+    allowed_tenant_id = _resolved_env("TEAMS_ALLOWED_TENANT_ID") or _resolved_env("AZURE_TENANT_ID")
+
+    @app.activity("message")
+    async def on_message(context, state):
+        question = (context.activity.text or "").strip()
+        if not question:
+            return
+
+        sender = context.activity.from_property
+        conversation = context.activity.conversation
+        object_id = getattr(sender, "aad_object_id", None)
+        tenant_id = getattr(conversation, "tenant_id", None) or getattr(sender, "tenant_id", None)
+        logger.info(
+            "Teams caller identity: channel=%s tenant_id=%s object_id=%s conversation_id=%s",
+            context.activity.channel_id,
+            tenant_id,
+            object_id,
+            getattr(conversation, "id", None),
+        )
+
+        if not object_id or not allowed_tenant_id or tenant_id != allowed_tenant_id:
+            await context.send_activity(NO_ACCESS_REPLY)
+            return
+
+        try:
+            principals = await resolver.resolve(object_id)
+        except SharePointPermissionError as error:
+            logger.warning("Teams caller rejected: object_id=%s reason=%s", object_id, error)
+            await context.send_activity(NO_ACCESS_REPLY)
+            return
+        logger.info("Teams caller resolved: object_id=%s principal_count=%d", object_id, len(principals))
+
+        token = set_trusted_principals(principals)
+        try:
+            response = await agent.run(question)
+            reply = response.text or NO_ACCESS_REPLY
+        except SharePointPermissionError:
+            reply = NO_ACCESS_REPLY
+        finally:
+            reset_trusted_principals(token)
+        await context.send_activity(reply)
+
+    @app.error
+    async def on_error(context, error):
+        logger.error("Teams handler error: %s", error, exc_info=True)
+        await context.send_activity("Sorry, something went wrong. Please try again.")
 
 if __name__ == "__main__":
     asyncio.run(main())

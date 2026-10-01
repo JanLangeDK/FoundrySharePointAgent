@@ -20,6 +20,7 @@ services:
             ALLOW_LOCAL_DEVELOPMENT_IDENTITY: ${ALLOW_LOCAL_DEVELOPMENT_IDENTITY=false}
             LOCAL_DEVELOPMENT_PRINCIPAL_IDS: ${LOCAL_DEVELOPMENT_PRINCIPAL_IDS=}
             SHAREPOINT_FOLDER_URL: ${SHAREPOINT_FOLDER_URL}
+            TEAMS_ALLOWED_TENANT_ID: ${TEAMS_ALLOWED_TENANT_ID}
         codeConfiguration:
             dependencyResolution: remote_build
             entryPoint: main.py
@@ -41,6 +42,8 @@ services:
         name: sharepoint-rag-agent
         protocols:
             - protocol: responses
+              version: 2.0.0
+            - protocol: activity
               version: 2.0.0
     ai-project:
         host: azure.ai.project

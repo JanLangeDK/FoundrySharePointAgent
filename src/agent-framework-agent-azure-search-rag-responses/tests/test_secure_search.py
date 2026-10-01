@@ -3,7 +3,12 @@ import json
 import pytest
 from azure.ai.agentserver.core import FoundryAgentRequestContext, reset_request_context, set_request_context
 
-from secure_search import SharePointPermissionError, SharePointSearchContextProvider
+from secure_search import (
+    SharePointPermissionError,
+    SharePointSearchContextProvider,
+    reset_trusted_principals,
+    set_trusted_principals,
+)
 
 
 def test_principal_filter_uses_all_principals() -> None:
@@ -46,6 +51,20 @@ def test_resolves_mapped_foundry_user(monkeypatch: pytest.MonkeyPatch) -> None:
         reset_request_context(request_token)
 
 
+def test_rejects_malformed_hosted_environment_mapping(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "FOUNDRY_USER_PRINCIPAL_MAP_JSON",
+        '{"foundry-user":["entra-user"]}"',
+    )
+    request_token = set_request_context(FoundryAgentRequestContext(user_id="foundry-user"))
+    try:
+        provider = object.__new__(SharePointSearchContextProvider)
+        with pytest.raises(SharePointPermissionError):
+            provider._resolve_principal_ids()
+    finally:
+        reset_request_context(request_token)
+
+
 def test_fails_closed_without_trusted_identity(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("FOUNDRY_USER_PRINCIPAL_MAP_JSON", raising=False)
     monkeypatch.delenv("ALLOW_LOCAL_DEVELOPMENT_IDENTITY", raising=False)
@@ -61,3 +80,25 @@ def test_local_identity_requires_explicit_opt_in(monkeypatch: pytest.MonkeyPatch
     provider = object.__new__(SharePointSearchContextProvider)
 
     assert provider._resolve_principal_ids() == ["user-id", "group-id"]
+
+
+def test_trusted_teams_principals_are_used(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FOUNDRY_USER_PRINCIPAL_MAP_JSON", "{}")
+    token = set_trusted_principals(["entra-oid", "entra-group"])
+    try:
+        provider = object.__new__(SharePointSearchContextProvider)
+        assert provider._resolve_principal_ids() == ["entra-oid", "entra-group"]
+    finally:
+        reset_trusted_principals(token)
+
+
+def test_empty_teams_principals_never_use_development_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ALLOW_LOCAL_DEVELOPMENT_IDENTITY", "true")
+    monkeypatch.setenv("LOCAL_DEVELOPMENT_PRINCIPAL_IDS", "user-id,group-id")
+    token = set_trusted_principals([])
+    try:
+        provider = object.__new__(SharePointSearchContextProvider)
+        with pytest.raises(SharePointPermissionError):
+            provider._resolve_principal_ids()
+    finally:
+        reset_trusted_principals(token)
